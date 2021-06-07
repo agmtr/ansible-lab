@@ -10,7 +10,7 @@
     - name: 1) Add user
       ansible.builtin.user:
         name: "{{ username }}"
-        password: "{{ password }}"
+        password: "{{ password | password_hash('sha512') }}"
       register: user
 
     - name: 2) Create application.json in home dir
