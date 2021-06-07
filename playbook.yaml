@@ -1,0 +1,58 @@
+---
+- hosts: web
+  become: true
+  tasks:
+    - name: Put SELinux in permissive mode
+      ansible.posix.selinux:
+        policy: targeted
+        state: permissive
+
+    - name: 1) Add user
+      ansible.builtin.user:
+        name: "{{ username }}"
+        password: "{{ password }}"
+      register: user
+
+    - name: 2) Create application.json in home dir
+      ansible.builtin.lineinfile:
+        dest: "{{ user.home }}/application.json"
+        line: "{}"
+        create: yes
+
+    - name: 3) Install nginx
+      ansible.builtin.package:
+        name: "{{ item }}"
+      loop:
+        - epel-release
+        - nginx
+
+    - name: 3) Configure nginx listen port
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: '(\s+)listen(\s+)80(\s+.*)?$'
+        line: "listen {{ nginx_port }} default_server;"
+        
+    - name: 4) Ensure nginx enabled and running
+      ansible.builtin.systemd:
+        name: nginx
+        enabled: yes
+        state: started
+
+    - name: 5) Get nginx status
+      ansible.builtin.service_facts:
+
+    - name: 5) Print service facts
+      ansible.builtin.debug:
+        var: ansible_facts.services["nginx.service"]
+     
+    - name: 6) Make /opt/data_archives
+      ansible.builtin.file:
+        path: /opt/data_archives
+        state: directory
+
+    - name: 6) Download some file from internet
+      ansible.builtin.get_url:
+        url: https://apache-mirror.rbc.ru/pub/apache/tomcat/tomcat-9/v9.0.46/bin/apache-tomcat-9.0.46.tar.gz
+        dest: /opt/data_archives/
+        checksum: sha512:4a82ed571d4060ae7cd6730718d7b54a3fa7eaaf7c8bb0e3e8abbff92d76856db52f3a87c5b5ee4e8452483bb3b31a5de55e192a18ea4229305780503ed63951
+
