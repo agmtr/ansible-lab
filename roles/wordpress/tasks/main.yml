@@ -1,0 +1,81 @@
+---
+# tasks file for wordpress
+
+- name: put selinux in permissive mode
+  ansible.posix.selinux:
+    policy: targeted
+    state: permissive
+
+- name: add remi repo
+  ansible.builtin.package:
+    name: "http://rpms.remirepo.net/enterprise/remi-release-7.rpm"
+    state: present
+
+- name: install nginx and php
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - epel-release
+    - nginx
+    - php72-php-cli
+    - php72-php-fpm
+    - php72-php-mysql
+    - php72-php-json
+    - php72-php-opcache
+    - php72-php-mbstring
+    - php72-php-xml
+    - php72-php-gd
+    - php72-php-curl
+
+- name: enable and start services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - php72-php-fpm
+
+- name: copy nginx conf
+  ansible.builtin.copy:
+    dest: /etc/nginx/
+    src: files/nginx.conf
+
+- name: copy vhost conf
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/
+    src: files/wordpress.conf
+
+- name: download wordpress
+  ansible.builtin.unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: /usr/share/nginx/
+    remote_src: yes
+    owner: nginx
+    group: nginx
+
+- name: change www-pool user
+  ansible.builtin.replace:
+    path: /etc/opt/remi/php72/php-fpm.d/www.conf
+    regexp: '^user =.*'
+    replace: "user = nginx"
+
+- name: change www-pool group
+  ansible.builtin.replace:
+    path: /etc/opt/remi/php72/php-fpm.d/www.conf
+    regexp: '^group =.*'
+    replace: "group = nginx"
+
+- name: restart php-fpm
+  ansible.builtin.systemd:
+    name: php72-php-fpm
+    state: restarted
+
+- name: reload nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded
+
+- debug:
+    msg: "now open http://{{ ansible_eth1.ipv4.address }}"

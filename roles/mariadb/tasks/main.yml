@@ -1,0 +1,35 @@
+---
+# tasks file for mariadb
+
+- name: put selinux in permissive mode
+  ansible.posix.selinux:
+    policy: targeted
+    state: permissive
+
+- name: install mariadb
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - epel-release
+    - mariadb-server
+    - python2-PyMySQL
+
+- name: enable and start service
+  ansible.builtin.systemd:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: create databse
+  community.mysql.mysql_db:
+    name: "{{ database }}"
+    state: present
+
+- name: create user
+  community.mysql.mysql_user:
+    name: "{{ username }}"
+    password: "{{ password }}"
+    host: "%"
+    state: present
+    priv: "{{ database }}.*:ALL"

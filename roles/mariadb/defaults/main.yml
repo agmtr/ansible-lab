@@ -1,0 +1,6 @@
+---
+# defaults file for mariadb
+
+database: "mariadb"
+username: "mariadb"
+password: "mariadb"
